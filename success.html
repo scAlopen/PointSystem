@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Point System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .points {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .button {
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+            border-radius: 3px;
+            padding: 10px;
+            cursor: pointer;
+            margin: 5px;
+            font-family: 'Roboto', sans-serif;
+        }
+        .leaderboard, .history,.logout, .reset {
+            margin-top: 20px;
+            font-size: 16px;
+        }
+        .draggable {
+            cursor: move;
+            margin: 5px 0;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-family: 'Roboto', sans-serif;
+        }
+        .update-points {
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+        }
+        .update-points input {
+            margin-right: 5px;
+            width: 60px;
+            padding: 5px;
+        }
+        .trophy {
+            margin-left: 10px;
+            width: 20px;
+            height: 20px;
+        }
+        .give-trophy {
+            margin-top: 10px;
+        }
+        .team-form {
+            margin-top: 10px;
+        }
+        .team-form input {
+            margin-right: 10px;
+            padding: 5px;
+            width: 150px;
+        }
+        .sound-effect {
+            display: none; /* Hide audio elements */
+        }
+    </style>
+</head>
+<body>
+    <!-- Audio elements for sound effects -->
+    <audio id="addTeamSound" class="sound-effect" src="add_team.mp3"></audio>
+    <audio id="removeTeamSound" class="sound-effect" src="remove_team.mp3"></audio>
+    <audio id="giveRewardSound" class="sound-effect" src="give_reward.mp3"></audio>
+    <audio id="logoutSound" class="sound-effect" src="logout.mp3"></audio>
+
+    <div class="container">
+        <h1>Advanced Point System</h1>
+        <hr>
+        <p class="points" id="points">0 Points</p>
+        <button class="button" onclick="addPoints()">+ Points</button>
+        <button class="button" onclick="removePoints()">- Points</button>
+        <hr>
+        <div class="leaderboard" id="leaderboard">
+            <!-- Leaderboard will be dynamically populated -->
+        </div>
+        
+        <div class="history" id="history"></div>
+        
+        <div class="store" id="store">
+           
+            <!-- Add more rewards here -->
+        </div>
+        <hr>
+        <div class="give-trophy">
+            <strong>Give/Remove Trophy:</strong><br>
+            <input type="text" id="teamNameInput" placeholder="Enter team name">
+            <select id="trophyType">
+                <option value="Badge">Badge</option>
+                <option value="Medal">Medal</option>
+                <option value="Trophy">Trophy</option>
+            </select>
+            <button class="button" onclick="giveOrRemoveTrophy()">Give/Remove Trophy</button>
+        </div>
+        <hr>
+        <div class="team-form">
+        <strong>Team Name:</strong><br>
+            <input type="text" id="teamName" placeholder="Enter team name">
+            <button class="button" onclick="createTeam()">Create Team</button>
+        </div>
+        <hr>
+        <div class="logout">
+            <button class="button" onclick="logout()">Log Out</button>
+            <button class="button" onclick="reset()">Reset</button>
+        </div>
+    </div>
+
+    <script>
+        let totalPoints = 0;
+        let leaderboard = [];
+        const rewards = {
+            'Badge': { points: 50, icon: '🥇' },
+            'Medal': { points: 100, icon: '🥈' },
+            'Trophy': { points: 200, icon: '🏆' }
+        };
+
+        function addPoints() {
+            updatePoints(10, "Earned 10 points for completing a task.");
+        }
+
+        function removePoints() {
+            updatePoints(-5, "Lost 5 points for an incorrect answer.");
+        }
+
+        function updatePoints(points, eventDescription) {
+            totalPoints += points;
+            document.getElementById('points').textContent = totalPoints + ' Points';
+            logEvent(eventDescription);
+            updateHistory();
+        }
+
+        function logEvent(description) {
+            const event = {
+                description: description,
+                timestamp: new Date().toLocaleString()
+            };
+            const player = { points: totalPoints, trophies: [], team: '' };
+            leaderboard.unshift(player);
+            updateLeaderboard();
+            updatePlayerSelect();
+        }
+
+        function updateLeaderboard() {
+            const leaderboardElement = document.getElementById('leaderboard');
+            leaderboardElement.innerHTML = ''; // Clear existing leaderboard
+
+            // Sort leaderboard in descending order by points
+            leaderboard.sort((a, b) => b.points - a.points);
+
+            // Create and append leaderboard items
+            leaderboard.forEach((player, index) => {
+                const item = document.createElement('div');
+                item.classList.add('draggable');
+                item.innerHTML = `
+                    <div class="team">${player.team}</div>
+                    ${player.points} Points
+                    ${player.trophies.map((trophy, idx) => `<span class="trophy" id="trophy-${index}-${idx}">${trophy} <input type="checkbox" data-player="${index}" data-trophy="${idx}" onchange="removeTrophy(this)"> Remove</span>`).join('')}
+                    <div class="update-points">
+                        <input type="number" id="points-input-${index}" placeholder="Points" value="${player.points}">
+                        <button class="button" onclick="updatePlayerPoints(${index})">Update</button>
+                    </div>
+                `;
+                leaderboardElement.appendChild(item);
+            });
+
+            // Initialize or reinitialize sortable functionality using SortableJS library
+            new Sortable(leaderboardElement, {
+                animation: 150,
+                handle: '.draggable', // Specify a handle for dragging
+                onEnd: saveLeaderboardOrder // Function to handle sorting end
+            });
+        }
+
+        function updatePlayerPoints(index) {
+            const input = document.getElementById(`points-input-${index}`);
+            const newPoints = parseInt(input.value);
+            if (!isNaN(newPoints)) {
+                leaderboard[index].points = newPoints;
+                updateLeaderboard();
+                updateHistory();
+            }
+        }
+
+        function updateHistory() {
+            const historyElement = document.getElementById('history');
+            historyElement.innerHTML = '<strong>History:</strong><br>';
+            const numToShow = 5; // Number of recent events to display
+            for (let i = 0; i < Math.min(numToShow, leaderboard.length); i++) {
+                historyElement.innerHTML += `${new Date().toLocaleString()}: ${leaderboard[i].points} Points<br>`;
+            }
+        }
+
+        function redeemReward(reward) {
+            const rewardData = rewards[reward];
+            if (rewardData && totalPoints >= rewardData.points) {
+                totalPoints -= rewardData.points;
+                document.getElementById('points').textContent = totalPoints + ' Points';
+                alert(`You have redeemed a ${reward}!`);
+                
+                // Add the trophy to the player
+                leaderboard[0].trophies.push(rewardData.icon); // Assuming the first player in the leaderboard is the current player
+
+                updateLeaderboard();
+                updateHistory();
+                playSoundEffect('giveRewardSound'); // Play reward sound effect
+            } else {
+                alert('Not enough points or invalid reward.');
+            }
+        }
+
+        function giveOrRemoveTrophy() {
+            const teamNameInput = document.getElementById('teamNameInput');
+            const teamName = teamNameInput.value.trim();
+            const trophyType = document.getElementById('trophyType').value; // Get selected trophy type
+            const rewardIcon = rewards[trophyType].icon; // Get icon for selected trophy type
+
+            if (teamName) {
+                // Find all players in the specified team
+                const playersToUpdate = leaderboard.filter(player => player.team === teamName);
+
+                if (playersToUpdate.length > 0) {
+                    playersToUpdate.forEach(player => {
+                        const trophyIndex = player.trophies.findIndex(trophy => trophy === rewardIcon);
+
+                        if (trophyIndex !== -1) {
+                            // Trophy found, remove it
+                            player.trophies.splice(trophyIndex, 1);
+                        } else {
+                            // Trophy not found, add it
+                            player.trophies.push(rewardIcon);
+                        }
+                    });
+
+                    updateLeaderboard();
+                    playSoundEffect('giveRewardSound'); // Play trophy sound effect
+                } else {
+                    alert('No players found in the specified team.');
+                }
+            } else {
+                alert('Please enter a valid team name.');
+            }
+        }
+
+        function createTeam() {
+            const teamNameInput = document.getElementById('teamName');
+            const teamName = teamNameInput.value.trim();
+            if (teamName) {
+                // Assign team name to the first player (assuming first player in leaderboard)
+                leaderboard[0].team = teamName;
+                updateLeaderboard();
+                teamNameInput.value = ''; // Clear input field
+                playSoundEffect('addTeamSound'); // Play add team sound effect
+            } else {
+                alert('Please enter a valid team name.');
+            }
+        }
+
+        function removeTrophy(checkbox) {
+            const playerIndex = parseInt(checkbox.dataset.player);
+            const trophyIndex = parseInt(checkbox.dataset.trophy);
+
+            if (!isNaN(playerIndex) && !isNaN(trophyIndex)) {
+                leaderboard[playerIndex].trophies.splice(trophyIndex, 1);
+                updateLeaderboard();
+                playSoundEffect('giveRewardSound'); // Play remove trophy sound effect
+            }
+        }
+
+        function reset() {
+            // Persist leaderboard data (in this case, saving to local storage)
+            localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+
+            // Clear current session data
+            totalPoints = 0;
+            leaderboard = [];
+            document.getElementById('points').textContent = '0 Points';
+            updateLeaderboard();
+            updateHistory();
+            playSoundEffect('resetSound'); // Play reset sound effect
+        }
+
+        function logout() {
+            // Persist leaderboard data (in this case, saving to local storage)
+            localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+
+            // Clear current session data
+            totalPoints = 0;
+            leaderboard = [];
+            document.getElementById('points').textContent = '0 Points';
+            updateLeaderboard();
+            updateHistory();
+            
+            // Redirect to login page
+            window.location.href = 'index.html';
+            playSoundEffect('logoutSound'); // Play logout sound effect
+        }
+
+        // Example initialization for users, rules, and notifications
+        function initialize() {
+            // Fetch user data, point rules, and notifications from the database
+            // This is a placeholder for backend integration
+
+            // Load saved leaderboard from storage
+            const storedLeaderboard = localStorage.getItem('leaderboard');
+            if (storedLeaderboard) {
+                leaderboard = JSON.parse(storedLeaderboard);
+                updateLeaderboard();
+            }
+        }
+
+        // Call initialize function on page load
+        window.onload = initialize;
+
+        // Function to save leaderboard order after drag and drop
+        function saveLeaderboardOrder() {
+            // Implement save functionality if needed
+            // Example:
+            // const newOrder = [...document.querySelectorAll('.draggable')].map(item => item.innerText);
+            // console.log(newOrder);
+        }
+
+        // Function to play sound effect
+        function playSoundEffect(soundId) {
+            const audio = document.getElementById(soundId);
+            if (audio) {
+                audio.currentTime = 0; // Rewind to the start
+                audio.play();
+            }
+        }
+    </script>
+
+    <!-- Include SortableJS library for drag-and-drop functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+</body>
+</html>
