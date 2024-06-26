@@ -141,32 +141,58 @@
     }
 
     function handleLogin(event) {
-        event.preventDefault();
-        var username = document.getElementById("loginUsername").value;
-        var password = document.getElementById("loginPassword").value;
+    event.preventDefault();
+    var username = document.getElementById("loginUsername").value;
+    var password = document.getElementById("loginPassword").value;
 
-        // Perform authentication logic here (dummy logic for demo)
-        if (username === "username" && password === "password") {
-            // Redirect to success page
+    // TODO: Replace with actual authentication logic
+    // Example: Send data to server for authentication
+    fetch('/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
             window.location.href = 'success.html';
         } else {
             alert("Invalid username or password. Please try again.");
         }
-        return false;
-    }
+    })
+    .catch(error => console.error('Error:', error));
+}
 
-    function handleRegistration(event) {
-        event.preventDefault();
-        var firstName = document.getElementById("firstName").value;
-        var lastName = document.getElementById("lastName").value;
-        var email = document.getElementById("email").value;
-        var registerPassword = document.getElementById("registerPassword").value;
+function handleRegistration(event) {
+    event.preventDefault();
+    var firstName = document.getElementById("firstName").value;
+    var lastName = document.getElementById("lastName").value;
+    var email = document.getElementById("email").value;
+    var password = document.getElementById("registerPassword").value;
 
-        // Perform registration logic here (dummy logic for demo)
-        // You can add AJAX calls to send registration data to a server
-        alert("Registration successful! You can now login.");
-        return false;
-    }
+    // TODO: Replace with actual registration logic
+    // Example: Send data to server for registration
+    fetch('/register', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ firstName, lastName, email, password })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert("Registration successful! You can now login.");
+            login(); // Switch to login form
+        } else {
+            alert("Registration failed. Please try again.");
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
 </script>
 
 </body>
