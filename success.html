@@ -100,7 +100,6 @@
         <div class="history" id="history"></div>
         
         <div class="store" id="store">
-           
             <!-- Add more rewards here -->
         </div>
         <hr>
@@ -116,7 +115,7 @@
         </div>
         <hr>
         <div class="team-form">
-        <strong>Team Name:</strong><br>
+            <strong>Team Name:</strong><br>
             <input type="text" id="teamName" placeholder="Enter team name">
             <button class="button" onclick="createTeam()">Create Team</button>
         </div>
@@ -156,173 +155,105 @@
                 description: description,
                 timestamp: new Date().toLocaleString()
             };
-            const player = { points: totalPoints, trophies: [], team: '' };
-            leaderboard.unshift(player);
-            updateLeaderboard();
-            updatePlayerSelect();
-        }
-
-        function updateLeaderboard() {
-            const leaderboardElement = document.getElementById('leaderboard');
-            leaderboardElement.innerHTML = ''; // Clear existing leaderboard
-
-            // Sort leaderboard in descending order by points
-            leaderboard.sort((a, b) => b.points - a.points);
-
-            // Create and append leaderboard items
-            leaderboard.forEach((player, index) => {
-                const item = document.createElement('div');
-                item.classList.add('draggable');
-                item.innerHTML = `
-                    <div class="team">${player.team}</div>
-                    ${player.points} Points
-                    ${player.trophies.map((trophy, idx) => `<span class="trophy" id="trophy-${index}-${idx}">${trophy} <input type="checkbox" data-player="${index}" data-trophy="${idx}" onchange="removeTrophy(this)"> Remove</span>`).join('')}
-                    <div class="update-points">
-                        <input type="number" id="points-input-${index}" placeholder="Points" value="${player.points}">
-                        <button class="button" onclick="updatePlayerPoints(${index})">Update</button>
-                    </div>
-                `;
-                leaderboardElement.appendChild(item);
-            });
-
-            // Initialize or reinitialize sortable functionality using SortableJS library
-            new Sortable(leaderboardElement, {
-                animation: 150,
-                handle: '.draggable', // Specify a handle for dragging
-                onEnd: saveLeaderboardOrder // Function to handle sorting end
-            });
-        }
-
-        function updatePlayerPoints(index) {
-            const input = document.getElementById(`points-input-${index}`);
-            const newPoints = parseInt(input.value);
-            if (!isNaN(newPoints)) {
-                leaderboard[index].points = newPoints;
-                updateLeaderboard();
-                updateHistory();
+            if (!leaderboard.events) {
+                leaderboard.events = [];
+            }
+            leaderboard.events.push(event);
+            if (leaderboard.events.length > 5) {
+                leaderboard.events.shift(); // Keep only the last 5 events
             }
         }
 
         function updateHistory() {
-            const historyElement = document.getElementById('history');
-            historyElement.innerHTML = '<strong>History:</strong><br>';
-            const numToShow = 5; // Number of recent events to display
-            for (let i = 0; i < Math.min(numToShow, leaderboard.length); i++) {
-                historyElement.innerHTML += `${new Date().toLocaleString()}: ${leaderboard[i].points} Points<br>`;
+            const historyDiv = document.getElementById('history');
+            historyDiv.innerHTML = ''; // Clear previous history
+            if (leaderboard.events && leaderboard.events.length > 0) {
+                leaderboard.events.forEach(event => {
+                    const p = document.createElement('p');
+                    p.textContent = `${event.timestamp}: ${event.description}`;
+                    historyDiv.appendChild(p);
+                });
             }
         }
 
-        function redeemReward(reward) {
-            const rewardData = rewards[reward];
-            if (rewardData && totalPoints >= rewardData.points) {
-                totalPoints -= rewardData.points;
-                document.getElementById('points').textContent = totalPoints + ' Points';
-                alert(`You have redeemed a ${reward}!`);
+        function updateLeaderboard() {
+            const leaderboardDiv = document.getElementById('leaderboard');
+            leaderboardDiv.innerHTML = ''; // Clear previous leaderboard
+            leaderboard.forEach(player => {
+                const div = document.createElement('div');
+                div.className = 'draggable';
+                div.textContent = `${player.name}: ${player.points} points ${player.trophies || ''}`;
                 
-                // Add the trophy to the player
-                leaderboard[0].trophies.push(rewardData.icon); // Assuming the first player in the leaderboard is the current player
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.value = player.points;
+                input.onchange = (e) => updatePlayerPoints(player.name, parseInt(e.target.value));
+                
+                const button = document.createElement('button');
+                button.textContent = 'Remove';
+                button.onclick = () => removePlayer(player.name);
+                
+                div.appendChild(input);
+                div.appendChild(button);
+                
+                leaderboardDiv.appendChild(div);
+            });
+        }
 
+        function updatePlayerPoints(name, points) {
+            const player = leaderboard.find(p => p.name === name);
+            if (player) {
+                player.points = points;
                 updateLeaderboard();
-                updateHistory();
-                playSoundEffect('giveRewardSound'); // Play reward sound effect
-            } else {
-                alert('Not enough points or invalid reward.');
             }
+        }
+
+        function removePlayer(name) {
+            leaderboard = leaderboard.filter(player => player.name !== name);
+            updateLeaderboard();
         }
 
         function giveOrRemoveTrophy() {
-            const teamNameInput = document.getElementById('teamNameInput');
-            const teamName = teamNameInput.value.trim();
-            const trophyType = document.getElementById('trophyType').value; // Get selected trophy type
-            const rewardIcon = rewards[trophyType].icon; // Get icon for selected trophy type
-
-            if (teamName) {
-                // Find all players in the specified team
-                const playersToUpdate = leaderboard.filter(player => player.team === teamName);
-
-                if (playersToUpdate.length > 0) {
-                    playersToUpdate.forEach(player => {
-                        const trophyIndex = player.trophies.findIndex(trophy => trophy === rewardIcon);
-
-                        if (trophyIndex !== -1) {
-                            // Trophy found, remove it
-                            player.trophies.splice(trophyIndex, 1);
-                        } else {
-                            // Trophy not found, add it
-                            player.trophies.push(rewardIcon);
-                        }
-                    });
-
-                    updateLeaderboard();
-                    playSoundEffect('giveRewardSound'); // Play trophy sound effect
-                } else {
-                    alert('No players found in the specified team.');
+            const teamName = document.getElementById('teamNameInput').value;
+            const trophyType = document.getElementById('trophyType').value;
+            const player = leaderboard.find(p => p.name === teamName);
+            if (player) {
+                if (!player.trophies) {
+                    player.trophies = [];
                 }
-            } else {
-                alert('Please enter a valid team name.');
+                const trophyIndex = player.trophies.indexOf(rewards[trophyType].icon);
+                if (trophyIndex > -1) {
+                    player.trophies.splice(trophyIndex, 1);
+                } else {
+                    player.trophies.push(rewards[trophyType].icon);
+                }
+                updateLeaderboard();
             }
         }
 
         function createTeam() {
-            const teamNameInput = document.getElementById('teamName');
-            const teamName = teamNameInput.value.trim();
-            if (teamName) {
-                // Assign team name to the first player (assuming first player in leaderboard)
-                leaderboard[0].team = teamName;
+            const teamName = document.getElementById('teamName').value;
+            if (teamName && !leaderboard.find(player => player.name === teamName)) {
+                leaderboard.push({ name: teamName, points: 0, trophies: [] });
                 updateLeaderboard();
-                teamNameInput.value = ''; // Clear input field
-                playSoundEffect('addTeamSound'); // Play add team sound effect
-            } else {
-                alert('Please enter a valid team name.');
-            }
-        }
-
-        function removeTrophy(checkbox) {
-            const playerIndex = parseInt(checkbox.dataset.player);
-            const trophyIndex = parseInt(checkbox.dataset.trophy);
-
-            if (!isNaN(playerIndex) && !isNaN(trophyIndex)) {
-                leaderboard[playerIndex].trophies.splice(trophyIndex, 1);
-                updateLeaderboard();
-                playSoundEffect('giveRewardSound'); // Play remove trophy sound effect
             }
         }
 
         function reset() {
-            // Persist leaderboard data (in this case, saving to local storage)
             localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
-
-            // Clear current session data
             totalPoints = 0;
-            leaderboard = [];
             document.getElementById('points').textContent = '0 Points';
+            document.getElementById('history').innerHTML = '';
+            leaderboard = [];
             updateLeaderboard();
-            updateHistory();
-            playSoundEffect('resetSound'); // Play reset sound effect
         }
 
         function logout() {
-            // Persist leaderboard data (in this case, saving to local storage)
-            localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
-
-            // Clear current session data
-            totalPoints = 0;
-            leaderboard = [];
-            document.getElementById('points').textContent = '0 Points';
-            updateLeaderboard();
-            updateHistory();
-            
-            // Redirect to login page
-            window.location.href = 'index.html';
-            playSoundEffect('logoutSound'); // Play logout sound effect
+            reset();
+            window.location.href = 'login.html';
         }
 
-        // Example initialization for users, rules, and notifications
         function initialize() {
-            // Fetch user data, point rules, and notifications from the database
-            // This is a placeholder for backend integration
-
-            // Load saved leaderboard from storage
             const storedLeaderboard = localStorage.getItem('leaderboard');
             if (storedLeaderboard) {
                 leaderboard = JSON.parse(storedLeaderboard);
@@ -330,28 +261,7 @@
             }
         }
 
-        // Call initialize function on page load
-        window.onload = initialize;
-
-        // Function to save leaderboard order after drag and drop
-        function saveLeaderboardOrder() {
-            // Implement save functionality if needed
-            // Example:
-            // const newOrder = [...document.querySelectorAll('.draggable')].map(item => item.innerText);
-            // console.log(newOrder);
-        }
-
-        // Function to play sound effect
-        function playSoundEffect(soundId) {
-            const audio = document.getElementById(soundId);
-            if (audio) {
-                audio.currentTime = 0; // Rewind to the start
-                audio.play();
-            }
-        }
+        document.addEventListener('DOMContentLoaded', initialize);
     </script>
-
-    <!-- Include SortableJS library for drag-and-drop functionality -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
 </body>
 </html>
