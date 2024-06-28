@@ -35,7 +35,7 @@
             margin: 5px;
             font-family: 'Roboto', sans-serif;
         }
-        .leaderboard, .history,.logout, .reset {
+        .leaderboard, .history, .logout, .reset {
             margin-top: 20px;
             font-size: 16px;
         }
@@ -100,7 +100,6 @@
         <div class="history" id="history"></div>
         
         <div class="store" id="store">
-           
             <!-- Add more rewards here -->
         </div>
         <hr>
@@ -305,13 +304,6 @@
             // Persist leaderboard data (in this case, saving to local storage)
             localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
 
-            // Clear current session data
-            totalPoints = 0;
-            leaderboard = [];
-            document.getElementById('points').textContent = '0 Points';
-            updateLeaderboard();
-            updateHistory();
-            
             // Redirect to login page
             window.location.href = 'index.html';
             playSoundEffect('logoutSound'); // Play logout sound effect
@@ -349,6 +341,7 @@
                 audio.play();
             }
         }
+        
     </script>
 
     <!-- Include SortableJS library for drag-and-drop functionality -->
