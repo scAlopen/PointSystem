@@ -1,0 +1,3 @@
+console.log('Firebase configuration:', firebaseConfig);
+console.log('App initialized:', app);
+console.log('Database:', database);

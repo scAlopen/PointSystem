@@ -78,20 +78,21 @@
             display: none; /* Hide audio elements */
         }
     </style>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
 </head>
 <body>
     <!-- Audio elements for sound effects -->
-    <audio id="addTeamSound" class="sound-effect" src="add_team.mp3"></audio>
-    <audio id="removeTeamSound" class="sound-effect" src="remove_team.mp3"></audio>
-    <audio id="giveRewardSound" class="sound-effect" src="give_reward.mp3"></audio>
-    <audio id="logoutSound" class="sound-effect" src="logout.mp3"></audio>
+    <audio id="addTeamSound" class="sound-effect" src="sounds/add_team.mp3"></audio>
+    <audio id="removeTeamSound" class="sound-effect" src="sounds/remove_team.mp3"></audio>
+    <audio id="giveRewardSound" class="sound-effect" src="sounds/give_reward.mp3"></audio>
+    <audio id="logoutSound" class="sound-effect" src="sounds/logout.mp3"></audio>
 
     <div class="container">
         <h1>Advanced Point System</h1>
         <hr>
-        <p class="points" id="points">0 Points</p>
-        <button class="button" onclick="addPoints()">+ Points</button>
-        <button class="button" onclick="removePoints()">- Points</button>
+        <div class="points" id="points">0 Points</div>
         <hr>
         <div class="leaderboard" id="leaderboard">
             <!-- Leaderboard will be dynamically populated -->
@@ -118,6 +119,7 @@
         <strong>Team Name:</strong><br>
             <input type="text" id="teamName" placeholder="Enter team name">
             <button class="button" onclick="createTeam()">Create Team</button>
+            <button class="button" onclick="removeTeam()">Remove Team</button>
         </div>
         <hr>
         <div class="logout">
@@ -127,6 +129,18 @@
     </div>
 
     <script>
+        // Firebase setup
+        var firebaseConfig = {
+            apiKey: "AIzaSyABYh0sIjZCTLRBZy5obNHr1EmV7K82JiY",
+            authDomain: "pointsystem-3e0a0.firebaseapp.com",
+            projectId: "pointsystem-3e0a0",
+            storageBucket: "pointsystem-3e0a0.appspot.com",
+            messagingSenderId: "942795957122",
+            appId: "1:942795957122:web:53419682fd3ce81682659b"
+        };
+        firebase.initializeApp(firebaseConfig);
+        var db = firebase.firestore();
+
         let totalPoints = 0;
         let leaderboard = [];
         const rewards = {
@@ -204,147 +218,159 @@
 
         function updateHistory() {
             const historyElement = document.getElementById('history');
-            historyElement.innerHTML = '<strong>History:</strong><br>';
-            const numToShow = 5; // Number of recent events to display
-            for (let i = 0; i < Math.min(numToShow, leaderboard.length); i++) {
-                historyElement.innerHTML += `${new Date().toLocaleString()}: ${leaderboard[i].points} Points<br>`;
-            }
+            historyElement.innerHTML = '<h3>History:</h3>';
+            leaderboard.forEach(event => {
+                const item = document.createElement('div');
+                item.classList.add('history-item');
+                item.textContent = `${event.timestamp} - ${event.description}`;
+                historyElement.appendChild(item);
+            });
         }
 
         function redeemReward(reward) {
             const rewardData = rewards[reward];
-            if (rewardData && totalPoints >= rewardData.points) {
+            if (totalPoints >= rewardData.points) {
                 totalPoints -= rewardData.points;
                 document.getElementById('points').textContent = totalPoints + ' Points';
-                alert(`You have redeemed a ${reward}!`);
-                
-                // Add the trophy to the player
-                leaderboard[0].trophies.push(rewardData.icon); // Assuming the first player in the leaderboard is the current player
-
-                updateLeaderboard();
+                logEvent(`Redeemed ${rewardData.icon} for ${rewardData.points} points.`);
                 updateHistory();
-                playSoundEffect('giveRewardSound'); // Play reward sound effect
+                playSoundEffect('giveRewardSound'); // Play the sound effect for giving a reward
             } else {
-                alert('Not enough points or invalid reward.');
+                alert(`You don't have enough points to redeem a ${reward}.`);
             }
         }
 
         function giveOrRemoveTrophy() {
-            const teamNameInput = document.getElementById('teamNameInput');
-            const teamName = teamNameInput.value.trim();
-            const trophyType = document.getElementById('trophyType').value; // Get selected trophy type
-            const rewardIcon = rewards[trophyType].icon; // Get icon for selected trophy type
-
-            if (teamName) {
-                // Find all players in the specified team
-                const playersToUpdate = leaderboard.filter(player => player.team === teamName);
-
-                if (playersToUpdate.length > 0) {
-                    playersToUpdate.forEach(player => {
-                        const trophyIndex = player.trophies.findIndex(trophy => trophy === rewardIcon);
-
-                        if (trophyIndex !== -1) {
-                            // Trophy found, remove it
-                            player.trophies.splice(trophyIndex, 1);
-                        } else {
-                            // Trophy not found, add it
-                            player.trophies.push(rewardIcon);
-                        }
-                    });
-
+            const teamName = document.getElementById('teamNameInput').value;
+            const trophyType = document.getElementById('trophyType').value;
+            if (teamName && trophyType) {
+                const player = leaderboard.find(p => p.team === teamName);
+                if (player) {
+                    const rewardData = rewards[trophyType];
+                    const trophyIndex = player.trophies.indexOf(rewardData.icon);
+                    if (trophyIndex > -1) {
+                        // Remove trophy
+                        player.trophies.splice(trophyIndex, 1);
+                        alert(`Removed ${rewardData.icon} from ${teamName}`);
+                        logEvent(`Removed ${rewardData.icon} from ${teamName}`);
+                    } else {
+                        // Add trophy
+                        player.trophies.push(rewardData.icon);
+                        alert(`Awarded ${rewardData.icon} to ${teamName}`);
+                        logEvent(`Awarded ${rewardData.icon} to ${teamName}`);
+                    }
                     updateLeaderboard();
-                    playSoundEffect('giveRewardSound'); // Play trophy sound effect
                 } else {
-                    alert('No players found in the specified team.');
+                    alert('Team not found.');
                 }
             } else {
-                alert('Please enter a valid team name.');
-            }
-        }
-
-        function createTeam() {
-            const teamNameInput = document.getElementById('teamName');
-            const teamName = teamNameInput.value.trim();
-            if (teamName) {
-                // Assign team name to the first player (assuming first player in leaderboard)
-                leaderboard[0].team = teamName;
-                updateLeaderboard();
-                teamNameInput.value = ''; // Clear input field
-                playSoundEffect('addTeamSound'); // Play add team sound effect
-            } else {
-                alert('Please enter a valid team name.');
+                alert('Please enter a team name and select a trophy type.');
             }
         }
 
         function removeTrophy(checkbox) {
-            const playerIndex = parseInt(checkbox.dataset.player);
-            const trophyIndex = parseInt(checkbox.dataset.trophy);
-
+            const playerIndex = parseInt(checkbox.getAttribute('data-player'));
+            const trophyIndex = parseInt(checkbox.getAttribute('data-trophy'));
             if (!isNaN(playerIndex) && !isNaN(trophyIndex)) {
-                leaderboard[playerIndex].trophies.splice(trophyIndex, 1);
-                updateLeaderboard();
-                playSoundEffect('giveRewardSound'); // Play remove trophy sound effect
+                const player = leaderboard[playerIndex];
+                if (player && player.trophies && player.trophies.length > trophyIndex) {
+                    const removedTrophy = player.trophies[trophyIndex];
+                    player.trophies.splice(trophyIndex, 1);
+                    logEvent(`Removed ${removedTrophy} from ${player.team}`);
+                    updateLeaderboard();
+                }
             }
         }
 
-        function reset() {
-            // Persist leaderboard data (in this case, saving to local storage)
-            localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+        function createTeam() {
+            const teamName = document.getElementById('teamName').value;
+            if (teamName) {
+                const team = {
+                    team: teamName,
+                    points: 0,
+                    trophies: []
+                };
+                leaderboard.push(team);
+                db.collection('teams').add(team).then(() => {
+                    updateLeaderboard();
+                    logEvent(`Created team: ${teamName}`);
+                    playSoundEffect('addTeamSound'); // Play the sound effect for adding a team
+                });
+            } else {
+                alert('Please enter a team name.');
+            }
+        }
 
-            // Clear current session data
-            totalPoints = 0;
-            leaderboard = [];
-            document.getElementById('points').textContent = '0 Points';
-            updateLeaderboard();
-            updateHistory();
-            playSoundEffect('resetSound'); // Play reset sound effect
+        function removeTeam() {
+            const teamName = document.getElementById('teamName').value;
+            if (teamName) {
+                const teamIndex = leaderboard.findIndex(team => team.team === teamName);
+                if (teamIndex > -1) {
+                    const team = leaderboard[teamIndex];
+                    db.collection('teams').where("team", "==", teamName).get().then((querySnapshot) => {
+                        querySnapshot.forEach((doc) => {
+                            doc.ref.delete().then(() => {
+                                leaderboard.splice(teamIndex, 1);
+                                updateLeaderboard();
+                                logEvent(`Removed team: ${teamName}`);
+                                playSoundEffect('removeTeamSound'); // Play the sound effect for removing a team
+                            }).catch((error) => {
+                                console.error("Error removing document: ", error);
+                            });
+                        });
+                    }).catch((error) => {
+                        console.error("Error getting documents: ", error);
+                    });
+                } else {
+                    alert('Team not found.');
+                }
+            } else {
+                alert('Please enter a team name.');
+            }
         }
 
         function logout() {
-            // Persist leaderboard data (in this case, saving to local storage)
-            localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
-
-            // Redirect to login page
-            window.location.href = 'index.html';
-            playSoundEffect('logoutSound'); // Play logout sound effect
+            firebase.auth().signOut().then(() => {
+                playSoundEffect('logoutSound'); // Play the sound effect for logout
+                window.location.href = 'index.html';
+            }).catch(error => {
+                console.error('Error signing out: ', error);
+            });
         }
 
-        // Example initialization for users, rules, and notifications
-        function initialize() {
-            // Fetch user data, point rules, and notifications from the database
-            // This is a placeholder for backend integration
-
-            // Load saved leaderboard from storage
-            const storedLeaderboard = localStorage.getItem('leaderboard');
-            if (storedLeaderboard) {
-                leaderboard = JSON.parse(storedLeaderboard);
-                updateLeaderboard();
-            }
+        function reset() {
+            totalPoints = 0;
+            document.getElementById('points').textContent = totalPoints + ' Points';
+            leaderboard = [];
+            updateLeaderboard();
+            updateHistory();
+            alert('Points and leaderboard have been reset.');
         }
 
-        // Call initialize function on page load
-        window.onload = initialize;
-
-        // Function to save leaderboard order after drag and drop
-        function saveLeaderboardOrder() {
-            // Implement save functionality if needed
-            // Example:
-            // const newOrder = [...document.querySelectorAll('.draggable')].map(item => item.innerText);
-            // console.log(newOrder);
-        }
-
-        // Function to play sound effect
+        // Sound effect playback function
         function playSoundEffect(soundId) {
-            const audio = document.getElementById(soundId);
-            if (audio) {
-                audio.currentTime = 0; // Rewind to the start
-                audio.play();
+            const soundEffect = document.getElementById(soundId);
+            if (soundEffect) {
+                soundEffect.play().catch(error => {
+                    console.error('Error playing sound:', error);
+                });
             }
         }
-        
-    </script>
 
-    <!-- Include SortableJS library for drag-and-drop functionality -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+        // Load initial data
+        window.onload = function() {
+            // Load points from Firestore
+            db.collection('teams').get().then((querySnapshot) => {
+                querySnapshot.forEach((doc) => {
+                    leaderboard.push(doc.data());
+                });
+                updateLeaderboard();
+            });
+
+            // Display current points
+            document.getElementById('points').textContent = totalPoints + ' Points';
+            updateHistory();
+        };
+    </script>
 </body>
 </html>

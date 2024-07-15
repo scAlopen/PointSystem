@@ -1,0 +1,71 @@
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+}
+.container {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #ffffff;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.points {
+    font-size: 24px;
+    font-weight: bold;
+    color: #007bff;
+}
+.button {
+    background-color: #007bff;
+    color: #ffffff;
+    border: none;
+    border-radius: 3px;
+    padding: 10px;
+    cursor: pointer;
+    margin: 5px;
+    font-family: 'Roboto', sans-serif;
+}
+.leaderboard, .history, .logout, .reset {
+    margin-top: 20px;
+    font-size: 16px;
+}
+.draggable {
+    cursor: move;
+    margin: 5px 0;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-family: 'Roboto', sans-serif;
+}
+.update-points {
+    display: flex;
+    align-items: center;
+    margin-top: 5px;
+}
+.update-points input {
+    margin-right: 5px;
+    width: 60px;
+    padding: 5px;
+}
+.trophy {
+    margin-left: 10px;
+    width: 20px;
+    height: 20px;
+}
+.give-trophy {
+    margin-top: 10px;
+}
+.team-form {
+    margin-top: 10px;
+}
+.team-form input {
+    margin-right: 10px;
+    padding: 5px;
+    width: 150px;
+}
+.sound-effect {
+    display: none; /* Hide audio elements */
+}
